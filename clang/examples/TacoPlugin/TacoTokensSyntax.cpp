@@ -144,12 +144,49 @@ public:
     OS << "#ifndef restrict\n";
     OS << "#define restrict __restrict\n";
     OS << "#endif\n";
-    
-    //include generated functions for all the Temp files created
-    for(auto &it:TempFilePaths){
-        
-	OS << "#include \""<< it <<"\" \n";
-    }
+    OS << "typedef struct csr_d {\n ";
+    OS << "  double *vals; // values\n ";
+    OS << "  int *cols;    // column index\n ";
+    OS << "  int *rptr;    // row pointer\n ";
+    OS << "  int nnz;      // number of non zeros\n ";
+    OS << "  int *order;   // storage mapping order 0,1 for row first\n ";
+    OS << "  int nr;       // number of rows\n ";
+    OS << "  \n ";
+    OS << "  \n ";
+    OS << "  // function pointer to be overloaded \n ";
+    OS << "  // for converting csr to taco. if not\n ";
+    OS << "  // overloaded default is used.\n ";
+    OS << "  taco_tensor_t* (* csr_d2taco) (struct csr_d *);\n ";
+    OS << "\n ";
+    OS << "  // function pointer for \n ";
+    OS << "  // converting back\n ";
+    OS << "  // to csr\n ";
+    OS << "  void (* taco2csr_d) (taco_tensor_t*,struct csr_d* );\n ";
+    OS << "\n ";
+    OS << "} csr_d;\n ";
+    OS << "\n ";
+    OS << "typedef struct coo_d {\n ";
+    OS << "  double *vals; //values\n ";
+    OS << "  int *cols; // column index array\n ";
+    OS << "  int *rows; // row index array\n ";
+    OS << "  int nnz; // number of non zeros\n ";
+    OS << "  int nr; // rows\n ";
+    OS << "  int nc; // columns\n ";
+    OS << "  \n ";
+    OS << "  \n ";
+    OS << "  //convert from coo to taco_tensor_t\n ";
+    OS << "  taco_tensor_t* (* coo_d2taco)(struct coo_d *); \n ";
+    OS << " \n ";
+    OS << "  \n ";
+    OS << "  // convert from taco to coo \n ";
+    OS << "  void (*taco2coo_d) (taco_tensor_t*,struct coo_d *);\n ";
+    OS << "} coo_d;\n ";
+    OS << "\n ";
+
+
+
+
+
   }
 };
 
