@@ -77,12 +77,10 @@ public:
       Expr += PP.getSpelling(Tok);
     }
     std::string Format= "";
-    // check to see if there is need for conversion
-    // to taco data structures
     unsigned NumParams = D.getFunctionTypeInfo().NumParams;
     DeclaratorChunk::ParamInfo *Params = D.getFunctionTypeInfo().Params;
     for (unsigned i = 0; i < NumParams; i++) {
-      // check if the parameter is of struct pointer
+      // Check if the parameter is of struct pointer
       // type, not a taco_tensor_t object and perform
       // implicit conversion.
       
@@ -96,7 +94,7 @@ public:
 			   "taco: format must have default argument,"
 			   "set format=\"\" if no special format is"
 			   "needed.");
-	   //get the text of the default 
+	   // Get the text of the default.
 	   auto DefaultRange = Lexer::getAsCharRange(
                            VarDecl->getDefaultArgRange(), 
 			   PP.getSourceManager(), 
@@ -108,7 +106,7 @@ public:
            replaceAll(Format,"\"","");
 	} 
          
-	// get parameter variable declaration data type
+	// Get parameter variable declaration data type
         // this is necessary to decide what kind of parameter
         // type is used so as to be able to decide on conversion
         // routines or not.
@@ -138,7 +136,7 @@ public:
 		        "routine void (*taco2<structname>) (" 
 		        "taco_tensor_t*,<structname>*)" );
 
-		  //do implicit conversion
+		  // Do implicit conversion.
 		  TensorMap[VarName].StructTypeName= 
 			  RT->getDecl()->getName();
 	          TensorMap[VarName].RequiresConversion = true;
@@ -175,7 +173,6 @@ public:
     std::string AssembleFunctionName = "__taco_assm_" + std::to_string(Unique);
     replaceAll(TacoCode, "compute", ComputeFunctionName);
     replaceAll(TacoCode, "assemble", AssembleFunctionName);
-
     Unique++;
     // create declarations by parsing the taco expression
     std::string ComputeFunctionCall = ComputeFunctionName + "(";
@@ -259,6 +256,44 @@ public:
     OS << ComputeFunctionDeclaration << "\n";
     OS << AssembleFunctionDeclaration << "\n";
     
+    // write taco definitions
+    OS << TacoCode << " \n";
+    // rewrite original function
+    auto DeclCharRange = Lexer::getAsCharRange(
+        D.getSourceRange(), PP.getSourceManager(), PP.getLangOpts());
+    auto DeclText = Lexer::getSourceText(DeclCharRange, PP.getSourceManager(),
+                                         PP.getLangOpts());
+
+    llvm::errs()<< DeclText << "\n";
+    OS << DeclText << "\n";
+    OS << "\n{\n";
+    OS << TacoPreConversionRoutines << "\n";
+       // write assemble function call
+    OS << AssembleFunctionCall << " \n";
+    // write compute function call.
+    OS << ComputeFunctionCall << "\n";
+
+    OS << TacoPostConversionRoutines << "\n";
+    
+    OS << TacoVariableCleanup << "\n";
+
+
+    OS << "\n}\n";
+
+  }
+
+  void AddToPredefines(llvm::raw_string_ostream &OS) override {
+    OS << "#ifdef __cplusplus\n";
+    OS << "#include <cstdlib>\n";
+    OS << "#include <cstdint>\n";
+    OS << "#else\n";
+    OS << "#include <stdint.h>\n";
+    OS << "#include <stdlib.h>\n";
+    OS << "#endif\n";    
+    OS<<" #define TACO_MIN(_a,_b) ((_a) < (_b) ? (_a) : (_b)) \n";
+    OS<<"#define TACO_MAX(_a,_b) ((_a) > (_b) ? (_a) : (_b)) \n";
+    OS<<"#define TACO_DEREF(_a) (((___context___*)(*__ctx__))->_a) \n";
+    
     // write taco clean up routine for temp variables
 
     OS<<"static inline void  __taco_cleanup_taco(taco_tensor_t * t){ \n";
@@ -275,46 +310,6 @@ public:
     OS<<"  } \n";
     OS<<"} \n";
     OS<<"     \n";
-    // write taco definitions
-    OS << TacoCode << " \n";
-    // rewrite original function
-    auto DeclCharRange = Lexer::getAsCharRange(
-        D.getSourceRange(), PP.getSourceManager(), PP.getLangOpts());
-    auto DeclText = Lexer::getSourceText(DeclCharRange, PP.getSourceManager(),
-                                         PP.getLangOpts());
-
-    OS << DeclText << "\n";
-    OS << "\n{\n";
-    OS << "printf(\"function started\\n\"); \n";
-    OS << TacoPreConversionRoutines << "\n";
-    OS << "printf(\"conversion routines done\\n\"); \n";
-       // write assemble function call
-    OS << AssembleFunctionCall << " \n";
-    OS << "printf(\"assemble routine done\\n\"); \n";
-    // write compute function call.
-    OS << ComputeFunctionCall << "\n";
-
-    OS << "printf(\"computation done\\n\"); \n";
-    OS << TacoPostConversionRoutines << "\n";
-    
-    OS << "printf(\" post conversion routines done\\n\"); \n";
-    OS << TacoVariableCleanup << "\n";
-
-    OS << "printf(\"taco cleanup done done\\n\"); \n";
-    OS << "\n}\n";
-  }
-
-  void AddToPredefines(llvm::raw_string_ostream &OS) override {
-    OS << "#ifdef __cplusplus\n";
-    OS << "#include <cstdlib>\n";
-    OS << "#include <cstdint>\n";
-    OS << "#else\n";
-    OS << "#include <stdint.h>\n";
-    OS << "#include <stdlib.h>\n";
-    OS << "#endif\n";    
-    OS<<" #define TACO_MIN(_a,_b) ((_a) < (_b) ? (_a) : (_b)) \n";
-    OS<<"#define TACO_MAX(_a,_b) ((_a) > (_b) ? (_a) : (_b)) \n";
-    OS<<"#define TACO_DEREF(_a) (((___context___*)(*__ctx__))->_a) \n";
    
     // generate masking for restrict
     OS << "#ifndef restrict\n";
