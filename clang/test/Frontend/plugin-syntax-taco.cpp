@@ -1,11 +1,20 @@
 // RUN: env TACO=${TACO}
-// RUN: %clang -I%TACO/include -L%TACO/build/lib -ltaco -std=c++11 -fplugin=%llvmshlibdir/TacoTokensSyntax%pluginext -emit-llvm -S %s -o - | FileCheck %s
+// RUN: %clang -I%TACO/include -L%TACO/build/lib -ltaco -std=c++2a -fplugin=%llvmshlibdir/TacoTokensSyntax%pluginext -emit-llvm -S %s -o - | FileCheck %s
 // REQUIRES: plugins, examples
 
 #include <string>
 
 [[clang::syntax(taco)]] void mat_vec_mul(taco_tensor_t *a,taco_tensor_t *b
-		,taco_tensor_t *c , std::string format = "") {
+		,taco_tensor_t *c ,const char * format = "") {
+   a(i) = b(i,j) * c(i)
+}
+
+
+//Tests on auto use
+
+
+[[clang::syntax(taco)]] void mat_test(auto a,auto b
+		,auto c , const char * format = "") {
    a(i) = b(i,j) * c(i)
 }
 

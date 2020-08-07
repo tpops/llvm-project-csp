@@ -35,6 +35,7 @@ struct VarAnalysis{
   bool IsOutput =false; // indicates the type of tensor
   bool IsNull = true; // check if tensor is null
   bool IsVisited = false; //indicates if code has been generated for Tensor
+  bool IsTemplate = false; // indicates that Variable is a template.
 };
 class TacoTokensHandler : public SyntaxHandler {
 private:
@@ -110,15 +111,29 @@ public:
 			   PP.getSourceManager(),
                            PP.getLangOpts()).str();
            replaceAll(Format,"\"","");
+	   continue;
 	} 
-         
+	llvm::errs() <<Expr << " VAR NAME: " <<VarName << "\n";
+       	 // Check if this parameter is a template. 
+        if (VarDecl->getOriginalType().getTypePtr()->isDependentType()){
+	   llvm::errs()<< "Is templated \n";
+	   TensorMap[VarName] = {};
+	   TensorMap[VarName].RequiresConversion = true;
+	   TensorMap[VarName].IsTemplate = true;
+	   continue;
+	}
+
+
+	
 	// Get parameter variable declaration data type
         // this is necessary to decide what kind of parameter
         // type is used so as to be able to decide on conversion
         // routines or not.
-        auto ParamStructType =
+        
+	auto ParamStructType =
             VarDecl->getOriginalType().getTypePtr()->getPointeeType();
-        if (!ParamStructType.isNull()) {
+        
+	if (!ParamStructType.isNull()) {
            if (const RecordType *RT = ParamStructType->getAs<RecordType>()) {
               
 	      TensorMap[VarName] = {};
@@ -127,7 +142,7 @@ public:
 		  //routines
 		  auto ConvRoutineToTaco = 
 			  FieldExistsInRecord(RT->getDecl(),
-					  RT->getDecl()->getName().str()+"2taco");
+					 RT->getDecl()->getName().str() +"2taco");
 		  auto ConvRoutineFromTaco =
 			 FieldExistsInRecord(RT->getDecl(),
 					  "taco2"+RT->getDecl()->getName().str());
@@ -161,7 +176,11 @@ public:
 	          TensorMap[VarName].RequiresConversion = true;
 	      }
            }
-         }
+         }else{
+	    // Throw an error as this is required to be 
+	    // a struct type.
+	 }
+
       }
     }
 
@@ -231,6 +250,7 @@ public:
       if (Tok.isAnyIdentifier() && ParseCount == 0) {
 	std::string ExprName = PP.getSpelling(Tok);
 	auto SearchTensor = TensorMap.find(ExprName);
+	llvm::errs() << ExprName << " \n";
 	assert(SearchTensor != TensorMap.end() && 
 			"taco: Tensor parameters do not match expression");
 	
@@ -243,12 +263,21 @@ public:
 
 	//conversion routines
 	if (SearchTensor->second.RequiresConversion){
-	   //calls the taco conversion routine function ptr
-	   TacoPreConversionRoutines +="taco_tensor_t * __taco_"+
+            //calls the taco conversion routine function ptr
+	   if (SearchTensor->second.IsTemplate){
+	      
+	      TacoPreConversionRoutines +="taco_tensor_t * __taco_"+
+		   ExprName + " = "+ExprName+"->__2taco ();\n";
+	      
+	   }else{
+	      TacoPreConversionRoutines +="taco_tensor_t * __taco_"+
 		   ExprName + " = "+ExprName+"->"+
 		   SearchTensor->second.StructTypeName+"2taco ("+ExprName+
 		   ");\n";
-	   //clear up memory allocated for this variable
+           
+	   }
+
+	  	   //clear up memory allocated for this variable
 	   //this should be sent to the stream after 
 	   //the computation and final conversion routines
 	   //have been called
@@ -262,9 +291,19 @@ public:
 	   //call conversion routines from datastructure
 	   //back to taco 
 	   if (IsFirstExpr){
-              TacoPostConversionRoutines+=ExprName+"->taco2"+
+              if (SearchTensor->second.IsTemplate){
+	         // Member function is called for templates
+		 // to revert back to original object.
+		 TacoPostConversionRoutines+=ExprName+
+			 "->taco2__(__taco_"+ExprName+");\n";
+
+	      }else{
+		 // Non template types are assumed to use function
+		 // pointers. 
+	         TacoPostConversionRoutines+=ExprName+"->taco2"+
 		      SearchTensor->second.StructTypeName+ 
 		      "(__taco_"+ExprName+","+ExprName+");\n";
+	      }
 	   }
 	   ComputeFunctionCall += ("__taco_" +ExprName + ",");
            AssembleFunctionCall += ("__taco_"+ExprName + ",");
