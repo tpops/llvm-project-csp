@@ -7279,9 +7279,7 @@ static void ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D,
   case ParsedAttr::AT_InternalLinkage:
     handleInternalLinkageAttr(S, D, AL);
     break;
-<<<<<<< HEAD
-=======
-  case ParsedAttr::AT_ExcludeFromExplicitInstantiation:
+ case ParsedAttr::AT_ExcludeFromExplicitInstantiation:
     handleSimpleAttribute<ExcludeFromExplicitInstantiationAttr>(S, D, AL);
     break;
   case ParsedAttr::AT_LTOVisibilityPublic:
@@ -7290,7 +7288,6 @@ static void ProcessDeclAttribute(Sema &S, Scope *scope, Decl *D,
   case ParsedAttr::AT_Syntax:
     // This was handled during parsing.
     break;
->>>>>>> initial commit where everything seems to work
 
   // Microsoft attributes:
   case ParsedAttr::AT_LayoutVersion:
