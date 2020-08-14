@@ -39,7 +39,6 @@ struct VarAnalysis{
 };
 class TacoTokensHandler : public SyntaxHandler {
 private:
-  std::map<std::string,VarAnalysis> TensorMap;
   uint32_t Unique; // variable to ensure unique
                    // naming during code generation
   void replaceAll(std::string &Original, const std::string &ToReplace,
@@ -73,12 +72,24 @@ public:
 
   void GetReplacement(Preprocessor &PP, Declarator &D, CachedTokens &Toks,
                       llvm::raw_string_ostream &OS) override {
+    std::map<std::string,VarAnalysis> TensorMap;
     auto DeclCharRange = Lexer::getAsCharRange(
         D.getSourceRange(), PP.getSourceManager(), PP.getLangOpts());
     auto DeclText = Lexer::getSourceText(DeclCharRange, PP.getSourceManager(),
                                          PP.getLangOpts());
-
-
+    std::string TemplateList= "";
+    auto TemplateParameterList = D.getTemplateParameterLists();
+    if (TemplateParameterList.size()!=0){
+      TemplateList+=" template< ";
+      auto it = TemplateParameterList.begin();
+      auto end = TemplateParameterList.end();
+      
+      //while(it!=end){
+        
+     // }
+    }
+    llvm::errs() << "Template List: " <<
+	    TemplateParameterList.size() << "\n";
     std::string Expr = "";
     for (auto &Tok : Toks) {
       Expr += PP.getSpelling(Tok);
@@ -172,7 +183,7 @@ public:
 
 		  // Do implicit conversion.
 		  TensorMap[VarName].StructTypeName= 
-			  RT->getDecl()->getName();
+			  RT->getDecl()->getName().str();
 	          TensorMap[VarName].RequiresConversion = true;
 	      }
            }
