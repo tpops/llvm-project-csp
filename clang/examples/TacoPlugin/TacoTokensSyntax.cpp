@@ -113,10 +113,8 @@ public:
            replaceAll(Format,"\"","");
 	   continue;
 	} 
-	llvm::errs() <<Expr << " VAR NAME: " <<VarName << "\n";
        	 // Check if this parameter is a template. 
         if (VarDecl->getOriginalType().getTypePtr()->isDependentType()){
-	   llvm::errs()<< "Is templated \n";
 	   TensorMap[VarName] = {};
 	   TensorMap[VarName].RequiresConversion = true;
 	   TensorMap[VarName].IsTemplate = true;
@@ -250,7 +248,6 @@ public:
       if (Tok.isAnyIdentifier() && ParseCount == 0) {
 	std::string ExprName = PP.getSpelling(Tok);
 	auto SearchTensor = TensorMap.find(ExprName);
-	llvm::errs() << ExprName << " \n";
 	assert(SearchTensor != TensorMap.end() && 
 			"taco: Tensor parameters do not match expression");
 	
@@ -356,7 +353,6 @@ public:
 
 
     OS << "\n}\n";
-
 
   }
 
